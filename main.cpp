@@ -38,6 +38,11 @@ public:
     typedef list<Position> PositionList;
 public:
     LinkedBinaryTree();
+    // Big Three: copy constructor, assignment operator, and destructor.
+    LinkedBinaryTree(const LinkedBinaryTree &other);
+    LinkedBinaryTree& operator=(const LinkedBinaryTree &other);
+    ~LinkedBinaryTree();
+
     int size() const;
     bool empty() const;
     Position root() const;
@@ -65,8 +70,16 @@ private:
     Node* _root;
     int n;
     double score; // Member variable to store the tree's score
+
+    // Helper functions for deep copy and destruction.
+    Node* clone(Node* v) const;
+    void destroy(Node* v);
+    int countNodes(Node* v) const;
 };
 
+///////////////////////////
+// Constructor & Basic Methods
+///////////////////////////
 LinkedBinaryTree::LinkedBinaryTree() : _root(NULL), n(0), score(0.0) {}
 
 int LinkedBinaryTree::size() const { return n; }
@@ -125,13 +138,15 @@ void LinkedBinaryTree::preorder(Node* v, PositionList &pl) const {
         preorder(v->right, pl);
 }
 
-// ------------------------ New Methods for Expression Trees ------------------------ //
+///////////////////////////
+// New Methods for Expression Trees
+///////////////////////////
 
-// Recursively prints the expression tree in infix notation with proper parentheses.
+// Recursive helper to print an expression tree with parentheses.
 void LinkedBinaryTree::printExpression(Node* v) const {
     if (v == NULL)
         return;
-    // If leaf node, just print its element.
+    // If the node is a leaf, simply print its element.
     if (v->left == NULL && v->right == NULL) {
         cout << v->elt;
     } else {
@@ -141,7 +156,7 @@ void LinkedBinaryTree::printExpression(Node* v) const {
             printExpression(v->left);
             cout << ")";
         } else {
-            // For binary operators, print as (left operator right)
+            // For binary operators, print with parentheses: (left operator right)
             cout << "(";
             printExpression(v->left);
             cout << v->elt;
@@ -155,7 +170,7 @@ void LinkedBinaryTree::printExpression() const {
     printExpression(_root);
 }
 
-// Recursively evaluates the expression tree given values for a and b.
+// Recursive helper to evaluate an expression tree given values for a and b.
 double LinkedBinaryTree::evaluateExpression(Node* v, double a, double b) const {
     if (v == NULL) return 0;
     // Leaf node: either a variable or a numeric literal.
@@ -167,12 +182,12 @@ double LinkedBinaryTree::evaluateExpression(Node* v, double a, double b) const {
         else
             return std::stod(v->elt);
     } else {
-        // Unary operator "abs"
+        // For the unary operator "abs"
         if (v->elt == "abs") {
             double val = evaluateExpression(v->left, a, b);
             return (val < 0) ? -val : val;
         }
-        // For binary operators: evaluate both subtrees.
+        // For binary operators, evaluate both subtrees.
         double leftVal = evaluateExpression(v->left, a, b);
         double rightVal = evaluateExpression(v->right, a, b);
         if (v->elt == "+")
@@ -202,12 +217,70 @@ void LinkedBinaryTree::setScore(double s) {
     score = s;
 }
 
-// Overload the < operator so trees can be sorted by their score.
 bool LinkedBinaryTree::operator<(const LinkedBinaryTree &other) const {
     return this->score < other.score;
 }
 
-// ------------------------ Helper Function: Create Expression Tree ------------------------ //
+///////////////////////////
+// Helper Functions for Deep Copy and Destruction
+///////////////////////////
+
+LinkedBinaryTree::Node* LinkedBinaryTree::clone(LinkedBinaryTree::Node* v) const {
+    if (v == nullptr)
+        return nullptr;
+    LinkedBinaryTree::Node* newNode = new LinkedBinaryTree::Node;
+    newNode->elt = v->elt;
+    newNode->left = clone(v->left);
+    if(newNode->left != nullptr)
+        newNode->left->par = newNode;
+    newNode->right = clone(v->right);
+    if(newNode->right != nullptr)
+        newNode->right->par = newNode;
+    return newNode;
+}
+
+
+// Recursively destroys the subtree rooted at v.
+void LinkedBinaryTree::destroy(Node* v) {
+    if (v != nullptr) {
+        destroy(v->left);
+        destroy(v->right);
+        delete v;
+    }
+}
+
+// Recursively counts nodes in the subtree.
+int LinkedBinaryTree::countNodes(Node* v) const {
+    if (v == nullptr)
+        return 0;
+    return 1 + countNodes(v->left) + countNodes(v->right);
+}
+
+///////////////////////////
+// Big Three: Copy Constructor, Assignment Operator, Destructor
+///////////////////////////
+LinkedBinaryTree::LinkedBinaryTree(const LinkedBinaryTree &other) : score(other.score) {
+    _root = clone(other._root);
+    n = countNodes(_root);
+}
+
+LinkedBinaryTree& LinkedBinaryTree::operator=(const LinkedBinaryTree &other) {
+    if (this != &other) {
+        destroy(_root);
+        _root = clone(other._root);
+        n = countNodes(_root);
+        score = other.score;
+    }
+    return *this;
+}
+
+LinkedBinaryTree::~LinkedBinaryTree() {
+    destroy(_root);
+}
+
+///////////////////////////
+// Helper Function: Create Expression Tree
+///////////////////////////
 //
 // This function builds a binary expression tree from a postfix expression string.
 // It uses a stack of trees and attaches subtrees based on whether the operator is unary (abs)
@@ -282,7 +355,9 @@ LinkedBinaryTree createExpressionTree(const string& postfix) {
     return s.top();
 }
 
-// ------------------------ Main Function (from the Assignment) ------------------------ //
+///////////////////////////
+// Main Function (from the Assignment)
+///////////////////////////
 //
 // This main function reads postfix expressions from "expressions.txt" and input values from "input.txt".
 // It then builds the expression trees, evaluates them with all the provided <a, b> pairs,
@@ -300,7 +375,7 @@ int main() {
     exp_file.close();
 
     // Read input data into 2D vector
-    vector<vector<double>> inputs;
+    vector<vector<double> > inputs;
     ifstream input_file("input.txt");
     while (getline(input_file, line)) {
         if(line.empty()) continue;
